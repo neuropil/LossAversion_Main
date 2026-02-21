@@ -35,12 +35,27 @@ switch PCname
         addpath('Z:\GitKraken\NLX-Event-Viewer\NLX_IO_Code'); % add NLX files to path
         addpath(genpath([strcat(nwbMatCD,'\matnwb-2.5.0.0')])); % add nwb_read and subfolders to path
     case 'DESKTOP-I5CPDO7'
-        % nwbMatCD = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.9.0\matnwb-2.9.0';
-        nwbMatCD = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.7.0\matnwb-2.7.0'; % MW27 and later
+
+        matNWB_25 = {'CLASE001','CLASE007','CLASE008','CLASE009','CLASE018','CLASE019','CLASE022',...
+            'CLASE023','CLASE024','CLASE026'};
+
+        matNWB_27 = {'CLASE027','CLASE029','CLASE030','CLASE031','CLASE034','CLASE035'};
+
+        if matches(tempPtID,matNWB_25)
+            nwbMatCD = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.5.0.0';
+            remNWB = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.7.0\matnwb-2.7.0';
+        elseif matches(tempPtID,matNWB_27)
+            nwbMatCD = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.7.0\matnwb-2.7.0';
+            remNWB = 'C:\Users\Admin\Documents\MATLAB\matnwb-2.5.0.0';
+        end
+        rmpath(genpath(remNWB));
+        addpath(genpath(nwbMatCD));
+
+
         synologyCD = 'Z:\LossAversion\Patient folders'; % Synology path
         NLXEventCD = 'C:\Users\Admin\Documents\Github\NLX-Event-Viewer\NLX_IO_Code'; % NLX event reader path
         addpath(NLXEventCD); % add NLX files to path
-        addpath(genpath(nwbMatCD)); % add nwb_read and subfolders to path
+
 end
 
 % Add NWB reader and NLX files to path  

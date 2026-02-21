@@ -2,10 +2,10 @@ function [] = BatchBlock_LA_V1()
 
 
 saveLoc = 'Z:\LossAversion\LH_Data\JAT_BlockData';
-cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LossAversionManuscript')
+cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
 conAllsubs = readtable('ContactNumbersLA.xlsx');
 
-for cii = 56:height(conAllsubs)
+for cii = 16:height(conAllsubs)
 
     tmpRow = conAllsubs(cii,:);
  
@@ -33,14 +33,19 @@ end
 function [numSS] = parseCONs(conNumsTi)
 
 if contains(conNumsTi,',')
-    outNum = num2cell(conNumsTi);
-    numSS = [str2double(outNum{1}) , str2double(outNum{3})];
+    % outNum = num2cell(conNumsTi);
+    outNumF = extractBefore(conNumsTi,',');
+    outNumL = extractAfter(conNumsTi,',');
+    numSS = [str2double(outNumF) , str2double(outNumL)];
 elseif contains(conNumsTi,';')
-    outNum = num2cell(conNumsTi);
-    numSS = str2double(outNum{1}) : str2double(outNum{3});
+    % outNum = num2cell(conNumsTi);
+    % numSS = str2double(outNum{1}) : str2double(outNum{3});
+    outNumF = extractBefore(conNumsTi,';');
+    outNumL = extractAfter(conNumsTi,';');
+    numSS = str2double(outNumF) : str2double(outNumL);
 else
     numSS = str2double(conNumsTi);
 end
-
+disp([newline num2str(numSS) newline]); disp([conNumsTi newline])
 
 end
