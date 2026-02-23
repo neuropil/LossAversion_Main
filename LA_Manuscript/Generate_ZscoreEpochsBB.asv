@@ -153,8 +153,8 @@ for mmi = 1:height(mDir2)           % -------------------- 1
             allFoooftab.FOOOFoutput{tti}.AfitParms = zEpoch_params_Fooof;
 
             % 2. JATspecP FIXED
-            muIBI_spFIXED = median(tmpBlMatSP_FIXED, 1, 'omitnan');
-            sdIBI_spFIXED = 1.4826 * mad(tmpBlMatSP_FIXED, 1, 1);
+            muIBI_spFIXED = median(tmpBlMatSPF, 1, 'omitnan');
+            sdIBI_spFIXED = 1.4826 * mad(tmpBlMatSPF, 1, 1);
             sdIBI_spFIXED(sdIBI_spFIXED==0) = NaN;
 
             muIBI_spFIXED = smoothdata(muIBI_spFIXED, 'movmean', 9);
@@ -202,8 +202,8 @@ for mmi = 1:height(mDir2)           % -------------------- 1
             allFoooftab.SpecPARAMJ{tti}.FIXED.AfitParms = zEpoch_params_FIXED;
 
             % 3. JATspecP KNEE
-            muIBI_spKNEE = median(tmpBlMatSP_KNEE, 1, 'omitnan');
-            sdIBI_spKNEE = 1.4826 * mad(tmpBlMatSP_KNEE, 1, 1);
+            muIBI_spKNEE = median(tmpBlMatSPK, 1, 'omitnan');
+            sdIBI_spKNEE = 1.4826 * mad(tmpBlMatSPK, 1, 1);
             sdIBI_spKNEE(sdIBI_spKNEE==0) = NaN;
 
             muIBI_spKNEE = smoothdata(muIBI_spKNEE, 'movmean', 9);
@@ -225,30 +225,29 @@ for mmi = 1:height(mDir2)           % -------------------- 1
                 peaksNK.AmpZS(ppi) = zPkpwer;
             end
 
-            % 3. JAT SpecP Knee Fit parameters
+                        % 2. JAT SpecP Fixed Fit parameters
             % Exponent
-            muIBI_Exp_KNEE = median(tmpBl_Exp_KNEE);
-            sdIBI_Exp_KNEE = mad(tmpBl_Exp_KNEE,1); % adds scaling to MAD
+            muIBI_Exp_FIXED = median(tmpBl_Exp_FIXED);
+            sdIBI_Exp_FIXED = mad(tmpBl_Exp_FIXED,1); % adds scaling to MAD
 
-            epoch_Exp_KNEE = tmpROW.SpecPARAMJ{1}.KNEE.params.exponent;
-            zEpoch_Exp_KNEE = (epoch_Exp_KNEE - muIBI_Exp_KNEE) ./sdIBI_Exp_KNEE;
+            epoch_Exp_FIXED = tmpROW.SpecPARAMJ{1}.FIXED.params.exponent;
+            zEpoch_Exp_FIXED = (epoch_Exp_FIXED - muIBI_Exp_FIXED) ./sdIBI_Exp_FIXED;
 
             % Offset
-            muIBI_Off_KNEE = median(tmpBl_Off_KNEE);
-            sdIBI_Off_KNEE = mad(tmpBl_Off_KNEE,1); % adds scaling to MAD
+            muIBI_Off_FIXED = median(tmpBl_Off_FIXED);
+            sdIBI_Off_FIXED = mad(tmpBl_Off_FIXED,1); % adds scaling to MAD
 
-            epoch_Off_KNEE = tmpROW.SpecPARAMJ{1}.KNEE.params.offset;
-            zEpoch_Off_KNEE = (epoch_Off_KNEE - muIBI_Off_KNEE) ./sdIBI_Off_KNEE;
+            epoch_Off_FIXED = tmpROW.SpecPARAMJ{1}.FIXED.params.offset;
+            zEpoch_Off_FIXED = (epoch_Off_FIXED - muIBI_Off_FIXED) ./sdIBI_Off_FIXED;
 
             % Ouput table
-            zEpoch_params_KNEE = table(zEpoch_Exp_KNEE,zEpoch_Off_KNEE,'VariableNames',{'Z_Exp','Z_Off'});
+            zEpoch_params_FIXED = table(zEpoch_Exp_FIXED,zEpoch_Off_FIXED,'VariableNames',{'Z_Exp','Z_Off'});
 
             % Store the z-scored power from Peaks into the output table
             allFoooftab.SpecPARAMJ{tti}.KNEE.zPkpwer = peaksNK;
             allFoooftab.SpecPARAMJ{tti}.KNEE.zScoreEpoch = zEpoch_spKNEE;
             allFoooftab.SpecPARAMJ{tti}.KNEE.BlkMed = muIBI_spKNEE;
             allFoooftab.SpecPARAMJ{tti}.KNEE.BlkMad = sdIBI_spKNEE;
-            allFoooftab.SpecPARAMJ{tti}.KNEE.AfitParms = zEpoch_params_KNEE;
 
             % Z_trial = (R_trial - muIBI) ./ sdIBI;
             % Z_trial = (R_trial - muIBI) ./ sdIBI;     % [nF x nT]
