@@ -1,4 +1,4 @@
-function [baseline] = Trial_Generate_v1(tempPtID , Hemi , BrainArea , contactNUMs)
+function [trialTableOUT] = Trial_Generate_v1(tempPtID , Hemi , BrainArea , contactNUMs)
 
 PCname = getenv('COMPUTERNAME');
 
@@ -81,127 +81,139 @@ behavDir = dir;
 behavDirNames = {behavDir.name};
 behavDirMat = contains(behavDirNames, 'v2');
 tmpBehavName = string(behavDirNames(behavDirMat));
-load(tmpBehavName)           % Loads as eventTABLE 
+load(tmpBehavName,'eventTABLE')           % Loads as eventTABLE 
 
 %%
-% Index where blocks are 
-idxBlock1 = find(eventTABLE.Blocks(:) == 1);
-idxBlock1_First = idxBlock1(1);
-idxBlock1_Last = idxBlock1(end);
+% Indicies of TRIAL starts (i.e., CHOICESHOW)
 
-idxBlock2 = find(eventTABLE.Blocks(:) == 2);
-idxBlock2_First = idxBlock2(1);
-idxBlock2_Last = idxBlock2(end);
+sanityCheck = unique(eventTABLE.TrialEvID(eventTABLE.TrialEvNum == 1));
 
-idxBlock3 = find(eventTABLE.Blocks(:) == 3);
-idxBlock3_First = idxBlock3(1);
-idxBlock3_Last = idxBlock3(end);
+try
+    assert(isscalar(sanityCheck) && matches(sanityCheck, 'choiceShow'), ...
+        'SanityCheck:UnexpectedValue', ...
+        'Expected a single value of ''choiceShow'' but got: %s', ...
+        strjoin(sanityCheck', ', '))
+catch ME
+    error(ME.identifier, 'Error in %s (line %d): %s', ...
+        ME.stack(1).name, ME.stack(1).line, ME.message)
+end
 
-idxBlock4 = find(eventTABLE.Blocks(:) == 4);
-idxBlock4_First = idxBlock4(1);
-idxBlock4_Last = idxBlock4(end);
 
-idxBlock5 = find(eventTABLE.Blocks(:) == 5);
-idxBlock5_First = idxBlock5(1);
-idxBlock5_Last = idxBlock5(end);
 
-% Get out time stamps for each behavioral marker
-% block1_FirstTime = eventTABLE.TrialEvTm(idxBlock1_First);
-block1_FirstTime = eventTABLE.TrialEvTm(idxBlock1_First);
-block1_LastTime = eventTABLE.TrialEvTm(idxBlock1_Last);
+% Find where each block starts (TrialEvNum == 1)
+trialStarts = find(eventTABLE.TrialEvNum == 1);
+nBlocks     = numel(trialStarts);
 
-block2_FirstTime = eventTABLE.TrialEvTm(idxBlock2_First);
-block2_LastTime = eventTABLE.TrialEvTm(idxBlock2_Last);
+% Preallocate
+TrialID = zeros(height(eventTABLE), 1);
 
-block3_FirstTime = eventTABLE.TrialEvTm(idxBlock3_First);
-block3_LastTime = eventTABLE.TrialEvTm(idxBlock3_Last);
+for i = 1:nBlocks
+    if i < nBlocks
+        idx = trialStarts(i):trialStarts(i+1)-1;
+    else
+        idx = trialStarts(i):numel(eventTABLE.TrialEvNum);
+    end
+    TrialID(idx) = i;
+end
 
-block4_FirstTime = eventTABLE.TrialEvTm(idxBlock4_First);
-block4_LastTime = eventTABLE.TrialEvTm(idxBlock4_Last);
+eventTABLE.TrialID = TrialID;
 
-block5_FirstTime = eventTABLE.TrialEvTm(idxBlock5_First);
-block5_LastTime = eventTABLE.TrialEvTm(idxBlock5_Last);
+trialSTARTS_inds = find(eventTABLE.TrialEvNum == 1);
 
-% Get out the location of those time stamps for the behavior marker
-[~, block1_FirstLoc] = min(abs(ma_timestampsDS - block1_FirstTime));
-[~, block1_LastLoc] = min(abs(ma_timestampsDS - block1_LastTime));
+% trialTABLE = table;
 
-[~, block2_FirstLoc] = min(abs(ma_timestampsDS - block2_FirstTime));
-[~, block2_LastLoc] = min(abs(ma_timestampsDS - block2_LastTime));
+allTrialTables = cell(numel(trialSTARTS_inds),1);
+allTrialChanns = cell(numel(trialSTARTS_inds),1);
+allTrialTimes = cell(numel(trialSTARTS_inds),1);
 
-[~, block3_FirstLoc] = min(abs(ma_timestampsDS - block3_FirstTime));
-[~, block3_LastLoc] = min(abs(ma_timestampsDS - block3_LastTime));
+for ii = 1:length(trialSTARTS_inds) % FOR EACH TRIAL
 
-[~, block4_FirstLoc] = min(abs(ma_timestampsDS - block4_FirstTime));
-[~, block4_LastLoc] = min(abs(ma_timestampsDS - block4_LastTime));
+    tmpTStartInd = trialSTARTS_inds(ii);
 
-[~, block5_FirstLoc] = min(abs(ma_timestampsDS - block5_FirstTime));
-[~, block5_LastLoc] = min(abs(ma_timestampsDS - block5_LastTime));
+    tmpStartTS = eventTABLE.TrialEvTm(tmpTStartInd);
 
-% Time 
-break1Time = (block2_FirstLoc - block1_LastLoc)/500;
-break2Time = (block3_FirstLoc - block2_LastLoc)/500;
-break3Time = (block4_FirstLoc - block3_LastLoc)/500;
-break4Time = (block5_FirstLoc - block4_LastLoc)/500;
+    [~, trialStartI_NLX] = min(abs(ma_timestampsDS - tmpStartTS));
 
-totalTime = break1Time + break2Time + break3Time + break4Time;
+    tmpTrialTab = eventTABLE(eventTABLE.TrialID == ii,:);
+    tmpTrialTabRS = tmpTrialTab(~matches(tmpTrialTab.TrialEvID,'choiceShow'),:);
 
-% Get out ephys for each behavioral event / screen seen
-break1_ephys = cleanVolts(:, block1_LastLoc:block2_FirstLoc);
-break2_ephys = cleanVolts(:, block2_LastLoc:block3_FirstLoc);
-break3_ephys = cleanVolts(:, block3_LastLoc:block4_FirstLoc);
-break4_ephys = cleanVolts(:, block4_LastLoc:block5_FirstLoc);
+    tmpTrialTabRSC = removevars(tmpTrialTabRS,["Trials","OffsetSecs"]);
 
-% 5 second Pre-block baselines
-preBlock1_INDs = block1_FirstLoc - 2500:(block1_FirstLoc-1);
-midBlk1a2 = round(median(block1_LastLoc:block2_FirstLoc));
-preBlock2_INDs = midBlk1a2 - 1250:(midBlk1a2 + 1250)-1;
-midBlk2a3 = round(median(block2_LastLoc:block3_FirstLoc));
-preBlock3_INDs = midBlk2a3 - 1250:(midBlk2a3 + 1250)-1;
-midBlk3a4 = round(median(block3_LastLoc:block4_FirstLoc));
-preBlock4_INDs = midBlk3a4 - 1250:(midBlk3a4 + 1250)-1;
-midBlk4a5 = round(median(block4_LastLoc:block5_FirstLoc));
-preBlock5_INDs = midBlk4a5 - 1250:(midBlk4a5 + 1250)-1;
+    for ttid = 1:height(tmpTrialTabRSC)
 
-preBlock1 = cleanVolts(:,preBlock1_INDs);
-preBlock2 = cleanVolts(:,preBlock2_INDs);
-preBlock3 = cleanVolts(:,preBlock3_INDs);
-preBlock4 = cleanVolts(:,preBlock4_INDs);
-preBlock5 = cleanVolts(:,preBlock5_INDs);
+        [~, tmpEpochTS_NLX] = min(abs(ma_timestampsDS - tmpTrialTabRSC.TrialEvTm(ttid)));
+        tmpTrialTabRSC.AbsolINDEX(ttid) = tmpEpochTS_NLX;
+        tmpTrialTabRSC.RelINDEX(ttid) = (tmpEpochTS_NLX - trialStartI_NLX) + 1;
+    end
 
-allEphys = [break1_ephys break2_ephys break3_ephys break4_ephys];
 
-% set up data to save 
-baseline = struct;
-% Break 1 
-baseline.Break1.Break1Time = break1Time;
-baseline.Break1.Break1Ephys = break1_ephys;
-% Break 2 
-baseline.Break2.Break2Time = break2Time;
-baseline.Break2.Break2Ephys = break2_ephys;
-% Break 3 
-baseline.Break3.Break3Time = break3Time;
-baseline.Break3.Break3Ephys = break3_ephys;
-% Break 4 
-baseline.Break4.Break4Time = break4Time;
-baseline.Break4.Break4Ephys = break4_ephys;
-% Combined
-baseline.CombinedBaseline.CombinedEphys = allEphys;
-baseline.CombinedBaseline.CombinedTime = totalTime;
+    if ii ~= length(trialSTARTS_inds)
 
-baseline.PreBlock1.Indices = preBlock1_INDs;
-baseline.PreBlock1.LFP     = preBlock1;
-baseline.PreBlock2.Indices = preBlock2_INDs;
-baseline.PreBlock2.LFP     = preBlock2;
-baseline.PreBlock3.Indices = preBlock3_INDs;
-baseline.PreBlock3.LFP     = preBlock3;
-baseline.PreBlock4.Indices = preBlock4_INDs;
-baseline.PreBlock4.LFP     = preBlock4;
-baseline.PreBlock5.Indices = preBlock5_INDs;
-baseline.PreBlock5.LFP     = preBlock5;
-baseline.WholeLFP = cleanVolts;
+        % End of trial - one sample prior to start of next trial
+        endOfTrialrow = height(tmpTrialTabRSC) + 1;
 
-%% Save
+        tmpTrialTabRSC.Blocks(endOfTrialrow) = tmpTrialTabRSC.Blocks(1);
+        tmpTrialTabRSC.TrialEvNum(endOfTrialrow) = 6;
+        tmpTrialTabRSC.TrialEvID{endOfTrialrow} = 'endOfTrial';
+        tmpTrialTabRSC.TrialID(endOfTrialrow) = tmpTrialTabRSC.TrialID(1);
+
+        % Get next trial start with 1 sample offset
+        upcomingTrialStartTS = trialSTARTS_inds(ii + 1);
+
+        upcomingTmpStartTS = eventTABLE.TrialEvTm(upcomingTrialStartTS);
+
+        [~, upcomingTrialStartI_NLX] = min(abs(ma_timestampsDS - upcomingTmpStartTS));
+
+        endOfcurrentTRIAL_TS = upcomingTrialStartI_NLX - 1;
+
+        tmpTrialTabRSC.TrialEvTm(endOfTrialrow) = ma_timestampsDS(endOfcurrentTRIAL_TS);
+        tmpTrialTabRSC.AbsolINDEX(endOfTrialrow) = endOfcurrentTRIAL_TS;
+        tmpTrialTabRSC.RelINDEX(endOfTrialrow) = (endOfcurrentTRIAL_TS - trialStartI_NLX) + 1;
+
+        % IF LAST trial of BLOCK
+        if tmpTrialTabRSC.RelINDEX(endOfTrialrow) > 5000
+
+            tmpLASTindex = tmpTrialTabRSC.AbsolINDEX(endOfTrialrow - 1);
+            tmpLASTindexShift = tmpLASTindex + 125;
+            tmpTrialTabRSC.TrialEvTm(endOfTrialrow) = ma_timestampsDS(tmpLASTindexShift);
+            tmpTrialTabRSC.AbsolINDEX(endOfTrialrow) = tmpLASTindexShift;
+            tmpTrialTabRSC.RelINDEX(endOfTrialrow) = (tmpLASTindexShift - trialStartI_NLX) + 1;
+
+        end
+
+    else % LAST TRIAL
+        % End of trial - LAST event + 250 ms
+        endOfTrialrow = height(tmpTrialTabRSC) + 1;
+
+        tmpTrialTabRSC.Blocks(endOfTrialrow) = tmpTrialTabRSC.Blocks(1);
+        tmpTrialTabRSC.TrialEvNum(endOfTrialrow) = 6;
+        tmpTrialTabRSC.TrialEvID{endOfTrialrow} = 'endOfTrial';
+        tmpTrialTabRSC.TrialID(endOfTrialrow) = tmpTrialTabRSC.TrialID(1);
+
+        tmpLASTindex = tmpTrialTabRSC.AbsolINDEX(endOfTrialrow - 1);
+
+        tmpLASTindexShift = tmpLASTindex + 125; % 125 samples = 250 ms
+
+        tmpTrialTabRSC.TrialEvTm(endOfTrialrow) = ma_timestampsDS(tmpLASTindexShift);
+        tmpTrialTabRSC.AbsolINDEX(endOfTrialrow) = tmpLASTindexShift;
+        tmpTrialTabRSC.RelINDEX(endOfTrialrow) = (tmpLASTindexShift - trialStartI_NLX) + 1;
+
+    end
+
+    allTrialTables{ii} = tmpTrialTabRSC;
+
+    % Get trial voltage from CHANNELS
+    allTrialChanns{ii} = cleanVolts(:, tmpTrialTabRSC.AbsolINDEX(1):...
+        tmpTrialTabRSC.AbsolINDEX(end));
+    allTrialTimes{ii} = ma_timestampsDS(tmpTrialTabRSC.AbsolINDEX(1):...
+        tmpTrialTabRSC.AbsolINDEX(end));
+
+end
+
+trialTableOUT = table(allTrialTables,allTrialChanns,allTrialTimes,'VariableNames',...
+    {'TrialTables','TrialChanVolts','TrialTimes'});
+
+% Save
 
 % saveLoc = [strcat('Y:\LossAversion\LH_Data\FOOOF_data\', tempPtID, '\', 'Baseline')];
 % cd(saveLoc)
