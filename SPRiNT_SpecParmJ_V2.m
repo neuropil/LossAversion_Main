@@ -1,4 +1,4 @@
-function [] = SPRiNT_SpecParmJ_V1(signal, fs ,plotUSE)
+function [results,sprint] = SPRiNT_SpecParmJ_V2(signal, fs , plotUSE)
 
 
 
@@ -11,9 +11,9 @@ t       = (0:N-1) / fs; % Time vector
 %  SECTION 2: SPRINT PARAMETERS
 % =========================================================
 
-sprint.win_len   = 1.5;       % Window length (seconds) % was 2
-sprint.win_step  = 0.25;     % Step size between windows (seconds) % was 0.5
-sprint.freq_range = [3 95]; % Frequency range for fitting (Hz)
+sprint.win_len   = 0.5;       % Window length (seconds) % was 2 for SHORT 
+sprint.win_step  = 0.1;     % Step size between windows (seconds) % was 0.5 or 0.25
+sprint.freq_range = [3 55]; % Frequency range for fitting (Hz) % was 40
 sprint.min_peak_height = 0.15;  % Minimum peak height (log power)
 sprint.peak_threshold  = 2.0;  % SD threshold above aperiodic for peak detection
 sprint.max_n_peaks     = 7;    % Maximum number of peaks to fit
@@ -24,16 +24,20 @@ sprint.aperiodic_mode  = 'knee'; % 'fixed' (no knee) or 'knee'
 sprint.win_samps  = round(sprint.win_len  * fs);
 sprint.step_samps = round(sprint.win_step * fs);
 
-% Window centers
-% Pad signal symmetrically so windows cover the full time range
+% 1. Compute pad length (needs win_samps to exist first)
 pad_samps = round(sprint.win_samps / 2);
-signal_padded = [zeros(1, pad_samps), signal, zeros(1, pad_samps)];
 
-% Shift window start indices to account for padding
+% 2. Create padded signal (multi-channel safe)
+signal_padded = [fliplr(signal(:, 1:pad_samps)), signal, fliplr(signal(:, end-pad_samps+1:end))];
+
+% 3. Compute window starts over padded length
 win_starts = 1 : sprint.step_samps : (length(signal_padded) - sprint.win_samps + 1);
-win_centers = ((win_starts + sprint.win_samps/2 - 1) - pad_samps) / fs;  % centres map back to original time
+
+% 4. Map window centres back to original time axis
+win_centers = ((win_starts + sprint.win_samps/2 - 1) - pad_samps) / fs;
+
+% 5. Count windows
 n_wins = length(win_starts);
-signal_padded = [fliplr(signal(1:pad_samps)), signal, fliplr(signal(end-pad_samps+1:end))];
 
 % fprintf('=== SPRiNT Configuration ===\n');
 % fprintf('  Window: %.1f s, Step: %.1f s\n', sprint.win_len, sprint.win_step);
@@ -57,42 +61,42 @@ sprint.n_wins = n_wins;
 
 fprintf('=== Computing short-time power spectra ===\n');
 
-% Use Hann window + zero-padding for frequency resolution
-nfft   = 2^nextpow2(sprint.win_samps * 4); % zero-pad 4x for resolution
-% hann_w = hann(sprint.win_samps)';
-
-% Frequency vector
+% FFT parameters
+nfft      = 2^nextpow2(sprint.win_samps * 4);  % zero-pad 4x for frequency resolution
 freqs_all = (0 : nfft/2) * fs / nfft;
 freq_mask = freqs_all >= sprint.freq_range(1) & freqs_all <= sprint.freq_range(2);
 freqs     = freqs_all(freq_mask);
 n_freqs   = length(freqs);
+n_channels = height(signal_padded);
 
-% Pre-allocate spectrogram
+% Welch sub-window (fixed across all iterations)
+sub_win_len = round(sprint.win_samps / 2);
+sub_win_ovl = round(sub_win_len * 0.5);
+
+% Pre-allocate
 psd_matrix = zeros(n_freqs, n_wins);
 
-% for wi = 1:n_wins
-%     idx = win_starts(wi) : win_starts(wi) + sprint.win_samps - 1;
-%     seg = signal(idx) .* hann_w;
-%     X   = fft(seg, nfft);
-%     psd = (2 / (fs * sum(hann_w.^2))) * abs(X(1:nfft/2+1)).^2;
-%     psd(2:end-1) = psd(2:end-1); % one-sided
-%     psd_matrix(:, wi) = psd(freq_mask);
-% end
-
-% Use Welch's method within each window for smoother PSDs
 for wi = 1:n_wins
-    idx = win_starts(wi) : win_starts(wi) + sprint.win_samps - 1;
-    seg = signal_padded(idx);
+    idx     = win_starts(wi) : win_starts(wi) + sprint.win_samps - 1;
+    psd_win = zeros(n_channels, n_freqs);
 
-    % Welch: 50% overlapping sub-windows within the sliding window
-    sub_win_len = round(sprint.win_samps / 2);  % sub-window = half of main window
-    [pxx, f_welch] = pwelch(seg, hann(sub_win_len), round(sub_win_len*0.5), nfft, fs);
+    for ch = 1:n_channels
+        seg          = signal_padded(ch, idx);
+        [pxx, ~]     = pwelch(seg, hann(sub_win_len), sub_win_ovl, nfft, fs);
+        psd_win(ch,:) = pxx(freq_mask)';
+    end
 
-    psd_matrix(:, wi) = pxx(freq_mask);
+    % Average linear power across channels
+    psd_matrix(:, wi) = mean(psd_win, 1);
 end
+
+% Store spectral metadata in results
+results.freqs     = freqs;
+results.psd_matrix = psd_matrix;
 
 fprintf('  Frequency resolution: %.3f Hz\n', freqs(2)-freqs(1));
 fprintf('  Spectrogram size: %d freqs x %d windows\n\n', n_freqs, n_wins);
+
 
 %% =========================================================
 %  SECTION 4: FIT FOOOF MODEL TO EACH TIME WINDOW
@@ -107,7 +111,7 @@ results.exponent    = NaN(1, n_wins);
 results.r_squared   = NaN(1, n_wins);
 results.error       = NaN(1, n_wins);
 results.peaks       = cell(1, n_wins);  % each cell: [cf, amplitude, bw]
-results.knee = NaN(1, n_wins);  % initialise before the loop
+results.knee        = NaN(1, n_wins);  % initialise before the loop
 
 log_freqs = log10(freqs);
 
@@ -119,9 +123,12 @@ for wi = 1:n_wins
     % ap_params = fit_aperiodic(log_freqs, log_psd, sprint.aperiodic_mode);
 
     % Exclude canonical oscillatory bands from initial aperiodic fit
-    excl = (freqs >= 7 & freqs <= 14) | (freqs >= 15 & freqs <= 30);
-    incl = ~excl;
-    ap_params = fit_aperiodic(log_freqs(incl), log_psd(incl), sprint.aperiodic_mode);
+    %%%%%% CONSIDER IF FITS ARE BAD
+    % excl = (freqs >= 7 & freqs <= 14) | (freqs >= 15 & freqs <= 30);
+    % incl = ~excl;
+    % ap_params = fit_aperiodic(log_freqs(incl), log_psd(incl), sprint.aperiodic_mode);
+
+    ap_params = fit_aperiodic(log_freqs, log_psd, sprint.aperiodic_mode);
 
     % --- Step 2: Iteratively find and remove peaks ---
     peaks_found = zeros(0, 3); % [cf, amplitude, bw]
@@ -139,12 +146,6 @@ for wi = 1:n_wins
             log_psd_flat(max_idx) = 0;  % suppress and continue
             continue;
         end
-
-        % Check if above threshold relative to local noise
-        % local_std = std(log_psd_flat);
-        % if max_val < sprint.peak_threshold * local_std
-        %     break;
-        % end
 
         % Estimate initial peak params: [cf, amp, bw_sigma]
         cf_init = freqs(max_idx);
@@ -232,6 +233,11 @@ for wi = 1:n_wins
     end
 end
 
+results.peakSummary.all_peaks_t = all_peaks_t;
+results.peakSummary.all_peaks_cf = all_peaks_cf;
+results.peakSummary.all_peaks_amp = all_peaks_amp;
+results.peakSummary.all_peaks_bw = all_peaks_bw;
+
 %% =========================================================
 %  SECTION 6: VISUALIZATION
 % =========================================================
@@ -315,7 +321,9 @@ if plotUSE
     %  SECTION 7: EXAMPLE — PLOT A FEW INDIVIDUAL WINDOW FITS
     % =========================================================
 
-    example_wins = round(linspace(5, n_wins-5, 6));
+    n_examples = min(6, n_wins);
+    example_wins = max(1, round(linspace(1, n_wins, n_examples)));
+    example_wins = unique(example_wins);  % remove duplicates if n_wins very small
 
     fig2 = figure('Name','Example Window Fits','Position',[100 100 1200 700],'Color','w');
 

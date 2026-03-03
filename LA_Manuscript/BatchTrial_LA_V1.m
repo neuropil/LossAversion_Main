@@ -16,7 +16,7 @@ for cii = 1:height(conAllsubs)
 
     conNums = parseCONs(conNumsTi);
 
-    [subjectTrialInfo] = Trial_Generate_v1(tempPtID , Hemi , BrainArea , conNums);
+    [subjectTrialInfo] = Trial_Generate_V2(tempPtID , Hemi , BrainArea , conNums);
 
     saveName = [tmpRow.SubjectCL{1},'_',tmpRow.HemiS{1},'_',tmpRow.nSBA{1},'_TrialDATA.mat'];
     cd(saveLoc)

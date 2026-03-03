@@ -1,0 +1,138 @@
+function [] = LA_Build_allTable_TRIAL_V1()
+
+
+%%%%% TO DO
+
+% SAVE STRUCTURE
+
+% Z-SCORE
+
+cd('Z:\LossAversion\LH_Data\JAT_TrialData')
+
+matDIR = dir('*.mat');
+matDIR2 = struct2table(matDIR);
+matDIR3 = matDIR2.name;
+
+for ii = 1:length(matDIR3)
+
+    load(matDIR3{ii},'subjectTrialInfo')
+
+    allSprintProc = cell(height(subjectTrialInfo),1);
+
+    for ii2 = 1:height(subjectTrialInfo)
+
+        % Temporary row
+        tmpROW = subjectTrialInfo(ii2,:);
+
+        % Temp Trial table
+        trialTAB = tmpROW.TrialTables{1};
+        trialCHANs = tmpROW.TrialChanVolts{1};
+
+        trialSTSum = struct;
+
+        % Loop through 4 events
+        for lei = 1:4
+
+            switch lei
+                case 1 % ITI
+                    % Extract event data
+                    tmpEVind_ITI = 1:trialTAB.RelINDEX(1) - 1;
+                    tmpEVmat_ITI = trialCHANs(:,tmpEVind_ITI);
+                    % Push through SPRINT
+                    [ITI_SP,ITI_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_ITI, 500 , 0);
+
+                    trialSTSum.ITI.SP = ITI_SP;
+                    trialSTSum.ITI.SPparams = ITI_SPparams;
+                    trialSTSum.ITI.INDS = tmpEVind_ITI;
+                    trialSTSum.ITI.Volts = tmpEVmat_ITI;
+
+                case 2 % CHOICE
+                    % Extract event data
+                    tmpEVind_EV = 1:trialTAB.RelINDEX(1) + 1000;
+                    tmpEVmat_EV = trialCHANs(:,tmpEVind_EV);
+                    % Push through SPRINT
+                    [EV_SP,EV_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_EV, 500 , 0);
+
+                    trialSTSum.CHOICE.SP = EV_SP;
+                    trialSTSum.CHOICE.SPparams = EV_SPparams;
+                    trialSTSum.CHOICE.INDS = tmpEVind_EV;
+                    trialSTSum.CHOICE.Volts = tmpEVmat_EV;
+
+                    [trialSTSum] = zSCOREDATA(trialSTSum , 'CHOICE');
+
+                case 3 % RESPONSE PROVIDED
+                    % Extract event data
+                    tmpEVind_EV = trialTAB.RelINDEX(3) - 499:trialTAB.RelINDEX(3) + 1000;
+                    tmpEVmat_EV = trialCHANs(:,tmpEVind_EV);
+                    % Push through SPRINT
+                    [EV_SP,EV_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_EV, 500 , 0);
+
+                    trialSTSum.RESPONSE.SP = EV_SP;
+                    trialSTSum.RESPONSE.SPparams = EV_SPparams;
+                    trialSTSum.RESPONSE.INDS = tmpEVind_EV;
+                    trialSTSum.RESPONSE.Volts = tmpEVmat_EV;
+
+                    [trialSTSum] = zSCOREDATA(trialSTSum , 'RESPONSE');
+
+                case 4 % OUTCOME SHOWN
+                    % Extract event data
+                    tmpEVind_EV = trialTAB.RelINDEX(4) - 499:trialTAB.RelINDEX(4) + 1000;
+
+                    if tmpEVind_EV(numel(tmpEVind_EV)) > length(trialCHANs)
+
+                        test = 1;
+
+                        trialSTSum.OUTCOME.SP = NaN;
+                        trialSTSum.OUTCOME.SPparams = NaN;
+                        trialSTSum.OUTCOME.INDS = NaN;
+                        trialSTSum.OUTCOME.Volts = NaN;
+
+                    else
+
+                        tmpEVmat_EV = trialCHANs(:,tmpEVind_EV);
+                        % Push through SPRINT
+                        [EV_SP,EV_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_EV, 500 , 0);
+
+                        trialSTSum.OUTCOME.SP = EV_SP;
+                        trialSTSum.OUTCOME.SPparams = EV_SPparams;
+                        trialSTSum.OUTCOME.INDS = tmpEVind_EV;
+                        trialSTSum.OUTCOME.Volts = tmpEVmat_EV;
+
+                        [trialSTSum] = zSCOREDATA(trialSTSum , 'OUTCOME');
+
+                    end
+            end
+        end
+        allSprintProc{ii2} = trialSTSum;
+        disp(ii2)
+    end
+
+    subjectTrialInfo.TrialTablesZS = allSprintProc;
+    save(matDIR3{ii},'subjectTrialInfo')
+
+end
+
+
+
+
+end
+
+
+
+function [results_in] = zSCOREDATA(results_in , eventID)
+
+mu_exp  = mean(results_in.ITI.SP.exponent,  'omitnan');
+sd_exp  = std(results_in.ITI.SP.exponent,   'omitnan');
+mu_off  = mean(results_in.ITI.SP.offset,    'omitnan');
+sd_off  = std(results_in.ITI.SP.offset,     'omitnan');
+
+% Z-score event block
+results_in.(eventID).SPZscore.exponent = (results_in.(eventID).SP.exponent - mu_exp) / sd_exp;
+results_in.(eventID).SPZscore.offset   = (results_in.(eventID).SP.offset   - mu_off) / sd_off;
+
+% Z-score PSD matrix (per frequency bin)
+mu_psd  = mean(results_in.ITI.SP.psd_matrix, 2);   % n_freqs x 1
+sd_psd  = std(results_in.ITI.SP.psd_matrix,  0, 2);
+results_in.(eventID).SPZscore.psd_z = (results_in.(eventID).SP.psd_matrix - mu_psd) ./ sd_psd;
+
+end
