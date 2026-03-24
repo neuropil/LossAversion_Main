@@ -31,7 +31,7 @@ switch PCname
     case 'DESKTOP-I5CPDO7' % JAT WORK PC
         preBlockLOC = 'Z:\LossAversion\LH_Data\JAT_BlockData';
         preZscoreLOC = 'Z:\LossAversion\LH_Data\JAT_FoooFtables\';
-        postZscoreLOC = 'Z:\LossAversion\LH_Data\JAT_FoooFtablesZS';
+        postZscoreLOC = 'Z:\LossAversion\LH_Data\JAT_FoooFtablesZS2';
 end % switch case
 
 cd(preBlockLOC)
@@ -73,10 +73,12 @@ for mmi = 1:height(mDir2)           % -------------------- 1
             tmpBlockFOF = preBlockFooof.FoooF.(['B_',num2str(blockID)]);
 
             tmpBlMatFOOOF = zeros(5,982);
+            tmpBlMatFOOOFP = zeros(5,982);
             tmpBl_Exp_FOOOF = zeros(5,1);
             tmpBl_Off_FOOOF = zeros(5,1);
             for blmi = 1:5
                 tmpBlMatFOOOF(blmi,:) = tmpBlockFOF{blmi}.power_spectrum - tmpBlockFOF{blmi}.ap_fit; 
+                tmpBlMatFOOOFP(blmi,:) = tmpBlockFOF{blmi}.fooofed_spectrum;
                 tmpBl_Exp_FOOOF(blmi,1) = tmpBlockFOF{blmi}.aperiodic_params(2);
                 tmpBl_Off_FOOOF(blmi,1) = tmpBlockFOF{blmi}.aperiodic_params(1);
             end
@@ -127,6 +129,29 @@ for mmi = 1:height(mDir2)           % -------------------- 1
                 peaksN(ppi,4) = zPkpwer;
             end
 
+            % 1bb - peak fooof
+            muIBI_P_Fooof = median(tmpBlMatFOOOFP, 1, 'omitnan');
+            sdIBI_P_Fooof = 1.4826 * mad(tmpBlMatFOOOFP, 1, 1);
+            sdIBI_P_Fooof(sdIBI_P_Fooof==0) = NaN;
+
+            muIBI_P_Fooof = smoothdata(muIBI_P_Fooof, 'movmean', 7);
+            sdIBI_P_Fooof = smoothdata(sdIBI_P_Fooof, 'movmean', 7);
+
+            sdIBI_P_Fooof = max(sdIBI_P_Fooof, prctile(sdIBI_P_Fooof, 5));   % still floor it
+            epoch_P_Fooof = tmpROW.FOOOFoutput{1}.fooofed_spectrum; 
+            zEpoch_P_Fooof = (epoch_P_Fooof - muIBI_P_Fooof) ./sdIBI_P_Fooof;
+
+            % Z-score - 1 value
+            allMEAN_fooof = mean(muIBI_P_Fooof);
+
+            allSTD_vars = sdIBI_P_Fooof.^2;              % convert to variances
+            allSTDSTD_of_vars = std(allSTD_vars);   % spread of variances
+            % or, pooled estimate:
+            allSTDpooled_sd = sqrt(mean(allSTDSTD_of_vars));
+            allSTD_fooof = allSTDpooled_sd;
+
+            zEpoch_P_Fooof2 = (epoch_P_Fooof - allMEAN_fooof) ./allSTD_fooof;
+
             % 1. FOOOF Voytek ---- Fit parameters
             % Exponent
             muIBI_Exp_Fooof = median(tmpBl_Exp_FOOOF);
@@ -151,6 +176,10 @@ for mmi = 1:height(mDir2)           % -------------------- 1
             allFoooftab.FOOOFoutput{tti}.BlkMed = muIBI_Fooof;
             allFoooftab.FOOOFoutput{tti}.BlkMad = sdIBI_Fooof;
             allFoooftab.FOOOFoutput{tti}.AfitParms = zEpoch_params_Fooof;
+
+            allFoooftab.FOOOFoutput{tti}.BlkMedianFP = muIBI_P_Fooof;
+            allFoooftab.FOOOFoutput{tti}.BlkMADFP = sdIBI_P_Fooof;
+            allFoooftab.FOOOFoutput{tti}.zScoreFPEpoch = zEpoch_P_Fooof;
 
             % 2. JATspecP FIXED
             muIBI_spFIXED = median(tmpBlMatSP_FIXED, 1, 'omitnan');
