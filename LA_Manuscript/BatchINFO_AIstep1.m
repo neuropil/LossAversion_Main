@@ -1,9 +1,9 @@
-function [] = BatchTrial_LA_V1()
+function [] = BatchINFO_AIstep1()
 
 
-saveLoc = 'Z:\LossAversion\LH_Data\JAT_TrialData';
+% saveLoc = 'Z:\LossAversion\LH_Data\JAT_TrialData';
 cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
-conAllsubs = readtable('ContactNumbersLA_UPDATE.xlsx');
+conAllsubs = readtable('ContactNumbersLA.xlsx');
 
 for cii = 1:height(conAllsubs)
 
@@ -16,11 +16,12 @@ for cii = 1:height(conAllsubs)
 
     conNums = parseCONs(conNumsTi);
 
-    [subjectTrialInfo] = Trial_Generate_V2(tempPtID , Hemi , BrainArea , conNums);
+    Trial_Generate_AI_Step1(tempPtID , Hemi , BrainArea , conNums);
 
-    saveName = [tmpRow.SubjectCL{1},'_',tmpRow.HemiS{1},'_',tmpRow.nSBA{1},'_TrialDATA.mat'];
-    cd(saveLoc)
-    save(saveName,'subjectTrialInfo');
+    % saveName = [tmpRow.SubjectCL{1},'_',tmpRow.HemiS{1},'_',tmpRow.nSBA{1},'_TrialDATA.mat'];
+    % cd(saveLoc)
+    % save(saveName,'subjectTrialInfo');
+    disp([num2str(cii), ' out of ' , num2str(height(conAllsubs))])
 
 
 end

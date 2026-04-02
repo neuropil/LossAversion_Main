@@ -141,7 +141,6 @@ outcomeLoss = eventTab.subjdata.cs.outcome < 0 & ~checkIndex;
 outcomeGain = eventTab.subjdata.cs.outcome > 0 & ~checkIndex;
 outcomeNeutral = eventTab.subjdata.cs.outcome == 0 & ~checkIndex;
 
-
 BehaviorTab = table( LA_trials, outcomeLoss, outcomeGain, outcomeNeutral, ...
     'VariableNames',["LA" "OutcomeLoss" "OutcomeGain" "OutcomeNeutral"]);
 

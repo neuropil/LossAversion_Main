@@ -10,7 +10,8 @@ switch PCname
 
     case 'DESKTOP-I5CPDO7' % JAT WORK PC
         partCD = 'Z:\LossAversion\Patient folders\';
-        saveCD = 'Z:\LossAversion\LH_Data\JAT_FoooFtables\';
+        % saveCD = 'Z:\LossAversion\LH_Data\JAT_FoooFtables\';
+        saveCD = 'Z:\LossAversion\LH_Data\JAT_FoooFtables_NEW\';
 
 
 end % switch case

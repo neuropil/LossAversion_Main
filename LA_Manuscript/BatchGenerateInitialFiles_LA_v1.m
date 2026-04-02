@@ -1,26 +1,24 @@
-function [] = BatchTrial_LA_V1()
+function [] = BatchGenerateInitialFiles_LA_v1()
 
 
-saveLoc = 'Z:\LossAversion\LH_Data\JAT_TrialData';
+% saveLoc = 'Z:\LossAversion\LH_Data\JAT_BlockData';
 cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
 conAllsubs = readtable('ContactNumbersLA_UPDATE.xlsx');
 
-for cii = 1:height(conAllsubs)
+for cii = 21:height(conAllsubs)
 
     tmpRow = conAllsubs(cii,:);
- 
+
     tempPtID = tmpRow.SubjectCL{1};
     Hemi = tmpRow.HemiS{1};
     BrainArea = tmpRow.HSBA{1};
+    saveBAname = tmpRow.nSBA{1};
     conNumsTi = tmpRow.ContactNums{1};
 
     conNums = parseCONs(conNumsTi);
 
-    [subjectTrialInfo] = Trial_Generate_V2(tempPtID , Hemi , BrainArea , conNums);
-
-    saveName = [tmpRow.SubjectCL{1},'_',tmpRow.HemiS{1},'_',tmpRow.nSBA{1},'_TrialDATA.mat'];
-    cd(saveLoc)
-    save(saveName,'subjectTrialInfo');
+    GenerateInitial_LFPdata_LA_v1(tempPtID , Hemi, ...
+        6 , conNums , BrainArea , saveBAname);
 
 
 end

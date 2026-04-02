@@ -55,7 +55,7 @@ behavDir = dir;
 behavDirNames = {behavDir.name};
 behavDirMat = contains(behavDirNames, 'v2');
 tmpBehavName = string(behavDirNames(behavDirMat));
-load(tmpBehavName)           % Loads as eventTABLE 
+load(tmpBehavName , 'eventTABLE')           % Loads as eventTABLE 
 
 %%
 % Index where blocks are 

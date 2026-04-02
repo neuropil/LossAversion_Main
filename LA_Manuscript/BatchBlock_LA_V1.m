@@ -3,9 +3,9 @@ function [] = BatchBlock_LA_V1()
 
 saveLoc = 'Z:\LossAversion\LH_Data\JAT_BlockData';
 cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
-conAllsubs = readtable('ContactNumbersLA.xlsx');
+conAllsubs = readtable('ContactNumbersLA_UPDATE.xlsx');
 
-for cii = 16:height(conAllsubs)
+for cii = 1:height(conAllsubs)
 
     tmpRow = conAllsubs(cii,:);
  
