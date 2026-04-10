@@ -13,7 +13,7 @@ matDIR = dir('*.mat');
 matDIR2 = struct2table(matDIR);
 matDIR3 = matDIR2.name;
 
-for ii = 1:length(matDIR3)
+for ii = 26:length(matDIR3)
 
     load(matDIR3{ii},'subjectTrialInfo')
 
