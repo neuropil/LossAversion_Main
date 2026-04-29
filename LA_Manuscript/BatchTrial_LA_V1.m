@@ -1,7 +1,7 @@
 function [] = BatchTrial_LA_V1()
 
 
-saveLoc = 'Z:\LossAversion\LH_Data\JAT_TrialData';
+saveLoc = 'W:\LossAversion\LH_Data\JAT_TrialData';
 cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
 conAllsubs = readtable('ContactNumbersLA_UPDATE.xlsx');
 

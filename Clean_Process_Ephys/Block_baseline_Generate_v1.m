@@ -33,7 +33,7 @@ switch PCname
         addpath(genpath(nwbMatCD));
 
         
-        synologyCD = 'Z:\LossAversion\Patient folders'; % Synology path
+        synologyCD = 'W:\LossAversion\Patient folders'; % Synology path
         NLXEventCD = 'C:\Users\Admin\Documents\Github\NLX-Event-Viewer\NLX_IO_Code'; % NLX event reader path
         addpath(NLXEventCD); % add NLX files to path
 

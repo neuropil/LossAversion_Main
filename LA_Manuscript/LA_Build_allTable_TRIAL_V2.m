@@ -1,4 +1,4 @@
-function [] = LA_Build_allTable_TRIAL_V1()
+function [] = LA_Build_allTable_TRIAL_V2()
 
 
 %%%%% TO DO
@@ -7,13 +7,13 @@ function [] = LA_Build_allTable_TRIAL_V1()
 
 % Z-SCORE
 
-cd('Z:\LossAversion\LH_Data\JAT_TrialData')
+cd('W:\LossAversion\LH_Data\JAT_TrialData')
 
 matDIR = dir('*.mat');
 matDIR2 = struct2table(matDIR);
 matDIR3 = matDIR2.name;
 
-for ii = 26:length(matDIR3)
+for ii = 1:length(matDIR3)
 
     load(matDIR3{ii},'subjectTrialInfo')
 
@@ -60,21 +60,35 @@ for ii = 26:length(matDIR3)
 
                     [trialSTSum] = zSCOREDATA(trialSTSum , 'CHOICE');
 
-                case 3 % RESPONSE PROVIDED
+                case 3 % RESPONSE SCREEN ONE
+                    % Extract event data
+                    tmpEVind_EV = trialTAB.RelINDEX(2) - 499:trialTAB.RelINDEX(2) + 1000;
+                    tmpEVmat_EV = trialCHANs(:,tmpEVind_EV);
+                    % Push through SPRINT
+                    [EV_SP,EV_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_EV, 500 , 0);
+
+                    trialSTSum.RESPONSEON.SP = EV_SP;
+                    trialSTSum.RESPONSEON.SPparams = EV_SPparams;
+                    trialSTSum.RESPONSEON.INDS = tmpEVind_EV;
+                    trialSTSum.RESPONSEON.Volts = tmpEVmat_EV;
+
+                    [trialSTSum] = zSCOREDATA(trialSTSum , 'RESPONSEON');
+
+                case 4 % RESPONSE PROVIDED
                     % Extract event data
                     tmpEVind_EV = trialTAB.RelINDEX(3) - 499:trialTAB.RelINDEX(3) + 1000;
                     tmpEVmat_EV = trialCHANs(:,tmpEVind_EV);
                     % Push through SPRINT
                     [EV_SP,EV_SPparams] = SPRiNT_SpecParmJ_V2(tmpEVmat_EV, 500 , 0);
 
-                    trialSTSum.RESPONSE.SP = EV_SP;
-                    trialSTSum.RESPONSE.SPparams = EV_SPparams;
-                    trialSTSum.RESPONSE.INDS = tmpEVind_EV;
-                    trialSTSum.RESPONSE.Volts = tmpEVmat_EV;
+                    trialSTSum.RESPONSEBUTTON.SP = EV_SP;
+                    trialSTSum.RESPONSEBUTTON.SPparams = EV_SPparams;
+                    trialSTSum.RESPONSEBUTTON.INDS = tmpEVind_EV;
+                    trialSTSum.RESPONSEBUTTON.Volts = tmpEVmat_EV;
 
-                    [trialSTSum] = zSCOREDATA(trialSTSum , 'RESPONSE');
+                    [trialSTSum] = zSCOREDATA(trialSTSum , 'RESPONSEBUTTON');
 
-                case 4 % OUTCOME SHOWN
+                case 5 % OUTCOME SHOWN
                     % Extract event data
                     tmpEVind_EV = trialTAB.RelINDEX(4) - 499:trialTAB.RelINDEX(4) + 1000;
 

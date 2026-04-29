@@ -29,9 +29,9 @@ switch PCname
         partCD = 'Y:\LossAversion\Patient folders\';
 
     case 'DESKTOP-I5CPDO7' % JAT WORK PC
-        preBlockLOC = 'Z:\LossAversion\LH_Data\JAT_BlockData';
-        preZscoreLOC = 'Z:\LossAversion\LH_Data\JAT_FoooFtables_NEW\';
-        postZscoreLOC = 'Z:\LossAversion\LH_Data\JAT_FoooFtablesZS2';
+        preBlockLOC = 'W:\LossAversion\LH_Data\JAT_BlockData';
+        preZscoreLOC = 'W:\LossAversion\LH_Data\JAT_FoooFtables_NEW\';
+        postZscoreLOC = 'W:\LossAversion\LH_Data\JAT_FoooFtablesZS2';
 end % switch case
 
 cd(preBlockLOC)

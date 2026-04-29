@@ -1,7 +1,7 @@
 function [] = BatchBlock_LA_V1()
 
 
-saveLoc = 'Z:\LossAversion\LH_Data\JAT_BlockData';
+saveLoc = 'W:\LossAversion\LH_Data\JAT_BlockData';
 cd('C:\Users\Admin\Documents\Github\LossAversion_Main\LA_Manuscript')
 conAllsubs = readtable('ContactNumbersLA_UPDATE.xlsx');
 
