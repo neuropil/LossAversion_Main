@@ -245,6 +245,7 @@ for c = 1:length(subjectLIST)
         'order',10, 'nBoot',100, 'contrast',{'CHOICE','OUTCOME'}, ...
         'epochOpts',{'winSamples',1500});
 
+
     Plot_GC_Bootstrap(BSGC, 'view','both');     % change on top, contrast below
 
     BSTE = Report_GC_Effects(BSGC);             % contrast, cluster-corrected
@@ -257,6 +258,7 @@ for c = 1:length(subjectLIST)
 
     saveName = ['GCC_',subjectLIST{subjectLIST},'.mat'];
 
-    save(saveName,"BSTE","BSGC","B_TAB");
+    save("GCC_CLASE009.mat","BSTE","BSGC","B_TAB");
+
 
 end

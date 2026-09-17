@@ -12,7 +12,9 @@ function Plot_GC_TimeResolved(TR, varargin)
 %           Run_GC_TimeResolved(..., 'spectral', true).
 %   'band'  band-averaged GC(t), one line per frequency band, for the top-K
 %           edges. Also needs TR.spec. Use this to find WHICH rhythm carries
-%           an effect seen in the broadband TR.gc trace.
+%           an effect seen in the broadband TR.gc trace. Several events may be
+%           overlaid: COLOUR encodes band, LINE STYLE encodes event
+%           (solid / dashed / dotted, in the order given by 'events').
 %   'edge'  a single named edge, all events, full size.
 %
 % PARAMETERS
@@ -77,8 +79,22 @@ if o.baseline && ~any(bIdx)
 end
 
 evAll = TR.events;
-if isempty(o.events), evIdx = 1:numel(evAll);
-else, [~,evIdx] = ismember(o.events, evAll); evIdx = evIdx(evIdx>0); end
+if isempty(o.events)
+    evIdx = 1:numel(evAll);
+else
+    [tf, evIdx] = ismember(o.events, evAll);
+    if ~all(tf)
+        % Silently dropping a requested event produced a figure that looked
+        % correct but showed fewer conditions than were asked for.
+        error('Plot_GC_TimeResolved:noEvent', ...
+            ['Event(s) {%s} are not in this TR struct.\n' ...
+             'It contains: {%s}\n' ...
+             'Rebuild it with Run_GC_TimeResolved(..., ''events'', {...}) ' ...
+             'listing every event you want to plot.'], ...
+            strjoin(o.events(~tf), ', '), strjoin(evAll(:)', ', '));
+    end
+    evIdx = evIdx(evIdx>0);
+end
 lab  = strrep(TR.nodeLabel,'_','-');
 n    = numel(lab);
 t    = TR.t;
@@ -108,9 +124,10 @@ case 'grid'
                 plot([t(1) t(end)],[0 0],'-','Color',[.6 .6 .6]);
             end
             plot([0 0],[ylo-pad yhi+pad],'-','Color',[.8 .8 .8]);
+            hE = zeros(1,numel(evIdx));
             for k = 1:numel(evIdx)
-                plot(t, squeeze(G(i,j,:,evIdx(k))), '-', ...
-                     'Color', cols(k,:), 'LineWidth', 1.3);
+                hE(k) = plot(t, squeeze(G(i,j,:,evIdx(k))), '-', ...
+                             'Color', cols(k,:), 'LineWidth', 1.3);
             end
             xlim([t(1) t(end)]); ylim([ylo-pad yhi+pad]);
             box on; set(gca,'FontSize',7);
@@ -118,7 +135,10 @@ case 'grid'
             if j == 1, ylabel(sprintf('to %s', lab{i}),'FontSize',8,'FontWeight','bold'); end
             if i == n, xlabel('time (s)','FontSize',7); end
             if i == 1 && j == 2
-                legend(evAll(evIdx),'FontSize',6,'Location','best'); legend boxoff;
+                % legend MUST bind to the trace handles: the reference lines are
+                % drawn first, so an unbound legend() labels those instead and
+                % silently shifts every event name onto the wrong curve.
+                legend(hE, evAll(evIdx),'FontSize',6,'Location','best'); legend boxoff;
             end
         end
     end
@@ -151,18 +171,22 @@ case 'band'
     nc = ceil(sqrt(K)); nr = ceil(K/nc);
     bCols = lines_(nB);
 
-    ev = evIdx(1);
+    % Colour = BAND, line style = EVENT, so several events can share a panel.
+    nE  = numel(evIdx);
+    sty = {'-','--',':','-.'};
 
     % ---- pass 1: compute every trace, so the y scale can be shared ----
-    Y = cell(K,nB);
+    Y = cell(K,nB,nE);
     for k = 1:K
         for b = 1:nB
             rg = bands.(bn{b});
             fm = TR.f >= rg(1) & TR.f <= rg(2);
             if ~any(fm), continue; end
-            y = squeeze(mean(TR.spec(ii(sel(k)), jj(sel(k)), fm, :, ev), 3));
-            if o.baseline, y = y - mean(y(bIdx)); end
-            Y{k,b} = y(:)';
+            for q = 1:nE
+                y = squeeze(mean(TR.spec(ii(sel(k)), jj(sel(k)), fm, :, evIdx(q)), 3));
+                if o.baseline, y = y - mean(y(bIdx)); end
+                Y{k,b,q} = y(:)';
+            end
         end
     end
     YL = common_ylim(Y, o);
@@ -174,9 +198,21 @@ case 'band'
         if o.baseline
             plot([t(1) t(end)], [0 0], '-', 'Color', [.55 .55 .55]);
         end
-        for b = 1:nB
-            if isempty(Y{k,b}), continue; end
-            plot(t, Y{k,b}, '-', 'Color', bCols(b,:), 'LineWidth', 1.8);
+        hL = []; lg = {};
+        for q = 1:nE
+            for b = 1:nB
+                if isempty(Y{k,b,q}), continue; end
+                h = plot(t, Y{k,b,q}, sty{mod(q-1,numel(sty))+1}, ...
+                         'Color', bCols(b,:), 'LineWidth', 1.8);
+                if k == 1
+                    hL(end+1) = h; %#ok<AGROW>
+                    if nE > 1
+                        lg{end+1} = sprintf('%s %s', bn{b}, evAll{evIdx(q)}); %#ok<AGROW>
+                    else
+                        lg{end+1} = bn{b}; %#ok<AGROW>
+                    end
+                end
+            end
         end
         xlim([t(1) t(end)]);
         if ~isempty(YL), ylim(YL); end
@@ -188,10 +224,15 @@ case 'band'
         else
             ylabel('spectral GC');
         end
-        title(sprintf('%s -> %s   (%s)', lab{jj(sel(k))}, lab{ii(sel(k))}, ...
-              evAll{ev}), 'FontSize',9,'FontWeight','bold');
-        if k == 1
-            legend(bn,'FontSize',7,'Location','best'); legend boxoff;
+        if nE > 1
+            title(sprintf('%s -> %s', lab{jj(sel(k))}, lab{ii(sel(k))}), ...
+                  'FontSize',9,'FontWeight','bold');
+        else
+            title(sprintf('%s -> %s   (%s)', lab{jj(sel(k))}, lab{ii(sel(k))}, ...
+                  evAll{evIdx(1)}), 'FontSize',9,'FontWeight','bold');
+        end
+        if k == 1 && ~isempty(hL)
+            legend(hL, lg, 'FontSize',7,'Location','best'); legend boxoff;
         end
     end
 
@@ -308,9 +349,10 @@ case {'top','tf'}
             else
                 plot([t(1) t(end)],[0 0],'-','Color',[.55 .55 .55]);
             end
+            hE = zeros(1,numel(evIdx));
             for q = 1:numel(evIdx)
                 y = Y{k,q};
-                plot(t, y, '-', 'Color', cols(q,:), 'LineWidth', 1.6);
+                hE(q) = plot(t, y, '-', 'Color', cols(q,:), 'LineWidth', 1.6);
                 if isfield(TR,'sig') && any(TR.sig(:))
                     sg = squeeze(TR.sig(ii(sel(k)), jj(sel(k)), :, evIdx(q)));
                     yy = y; yy(~sg(:)') = NaN;
@@ -325,7 +367,8 @@ case {'top','tf'}
             title(sprintf('%s -> %s', lab{jj(sel(k))}, lab{ii(sel(k))}), ...
                   'FontSize',9,'FontWeight','bold');
             if k == 1
-                legend(evAll(evIdx),'FontSize',7,'Location','best'); legend boxoff;
+                % bind to trace handles -- see note in the grid view above
+                legend(hE, evAll(evIdx),'FontSize',7,'Location','best'); legend boxoff;
             end
         end
     end
@@ -341,8 +384,10 @@ case 'edge'
               strjoin(TR.nodeLabel', ', '));
     end
     fig = figure('visible',o.visible,'Color','w','Position',[80 80 800 420]); hold on;
+    hE = zeros(1,numel(evIdx));
     for q = 1:numel(evIdx)
-        plot(t, squeeze(G(i,j,:,evIdx(q))), '-','Color',cols(q,:),'LineWidth',2);
+        hE(q) = plot(t, squeeze(G(i,j,:,evIdx(q))), '-', ...
+                     'Color',cols(q,:),'LineWidth',2);
     end
     if ~o.baseline && isfinite(floorV)
         plot([t(1) t(end)],[floorV floorV],'--','Color',[.55 .55 .55]);
@@ -351,7 +396,7 @@ case 'edge'
     xlim([t(1) t(end)]); box on; grid on;
     xlabel('time (s)'); ylabel('GC');
     title(sprintf('%s: %s -> %s', TR.subject, lab{j}, lab{i}),'FontWeight','bold');
-    legend(evAll(evIdx),'Location','best'); legend boxoff;
+    legend(hE, evAll(evIdx),'Location','best'); legend boxoff;
 
 otherwise
     error('Plot_GC_TimeResolved:view','Unknown view ''%s''.', o.view);
