@@ -13,6 +13,12 @@ function Plot_GC_Bootstrap(BS, varargin)
 %   'view'      ['contrast']
 %   'topK'      [6]      edges shown, ranked by peak |effect|
 %   'cluster'   [true]   shade cluster-corrected windows; false = pointwise
+%   'sigBars'   [true]   on the CHANGE panels, draw one horizontal bar per
+%                        event along the bottom marking windows whose CI
+%                        excludes zero (pointwise). Full-height shading is
+%                        used on the contrast panels, where only one series
+%                        is drawn; with three events overlaid it would be
+%                        unreadable, hence bars.
 %   'shareY'    [true]
 %   'ylim'      []
 %   'saveFig'   ''
@@ -26,6 +32,7 @@ ip.addParameter('view','contrast',@ischar);
 ip.addParameter('topK',6,@isscalar);
 ip.addParameter('cluster',true,@(x)islogical(x)||isnumeric(x));
 ip.addParameter('shareY',true,@(x)islogical(x)||isnumeric(x));
+ip.addParameter('sigBars',true,@(x)islogical(x)||isnumeric(x));
 ip.addParameter('ylim',[],@(x)isempty(x)||numel(x)==2);
 ip.addParameter('saveFig','',@ischar);
 ip.addParameter('visible','on',@ischar);
@@ -109,6 +116,7 @@ for r = 1:nR
             ttl = sprintf('%s - %s', BS.contrastEvents{2}, BS.contrastEvents{1});
         else
             hE = zeros(1,numel(evs));
+            sgAll = false(numel(evs), numel(t));
             for e = 1:numel(evs)
                 m  = squeeze(BS.change.(evs{e}).mean(i,j,:))';
                 lo = squeeze(BS.change.(evs{e}).lo(i,j,:))';
@@ -116,6 +124,11 @@ for r = 1:nR
                 band(t, lo, hi, cols(min(e,size(cols,1)),:));
                 hE(e) = plot(t, m, '-', 'Color', cols(min(e,size(cols,1)),:), ...
                              'LineWidth',1.8);
+                if o.cluster && isfield(BS.change.(evs{e}),'sigCluster')
+                    sgAll(e,:) = squeeze(BS.change.(evs{e}).sigCluster(i,j,:))';
+                else
+                    sgAll(e,:) = squeeze(BS.change.(evs{e}).sig(i,j,:))';
+                end
             end
             % legend bound to the trace handles -- the CI patches are drawn
             % first, so an unbound legend() would label those instead
@@ -128,6 +141,15 @@ for r = 1:nR
         plot([t(1) t(end)],[0 0],'-','Color',[.45 .45 .45]);
         if ~isempty(YL), ylim(YL); end
         yl = ylim; plot([0 0],yl,'-','Color',[.8 .8 .8]);
+        % significance bars need the final ylim, so they are drawn here
+        if strcmp(rows{r},'change') && o.sigBars && exist('sgAll','var')
+            nEb = size(sgAll,1);
+            hBar = 0.035*diff(yl);
+            for e = 1:nEb
+                y0 = yl(1) + (nEb-e)*hBar*1.15 + 0.01*diff(yl);
+                sig_bar(t, sgAll(e,:), y0, hBar, cols(min(e,size(cols,1)),:));
+            end
+        end
         xlim([t(1) t(end)]); box on; grid on; set(gca,'FontSize',8);
         xlabel('time (s)'); ylabel('\DeltaGC');
         title(sprintf('%s -> %s   (%s)', lab{j}, lab{i}, ttl), ...
@@ -164,6 +186,21 @@ t = t(ok); lo = lo(ok); hi = hi(ok);
 px = [t, fliplr(t)]; py = [lo, fliplr(hi)];
 h = fill(px, py, c, 'EdgeColor','none');
 try, set(h,'FaceAlpha',0.20); catch, set(h,'FaceColor', 1-0.25*(1-c)); end
+end
+
+function sig_bar(t, sg, y0, h, c)
+% One horizontal strip per event marking significant windows.
+k = 1; nW = numel(sg);
+while k <= nW
+    if sg(k)
+        j = k; while j < nW && sg(j+1), j = j+1; end
+        x1 = t(max(k-1,1)); x2 = t(min(j+1,nW));
+        fill([x1 x2 x2 x1],[y0 y0 y0+h y0+h], c, 'EdgeColor','none');
+        k = j+1;
+    else
+        k = k+1;
+    end
+end
 end
 
 function shade_runs(t, sg, yl, c)
