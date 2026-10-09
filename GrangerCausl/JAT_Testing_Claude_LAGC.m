@@ -232,17 +232,23 @@ save("GCC_CLASE009.mat","T_009","BS_009","T_009_TAB");
 
 %%
 
-subjectLIST = {'CLASE030','CLASE031','CLASE034','CLASE035'};
+% subjectLIST = {'CLASE030','CLASE031','CLASE034','CLASE035'};
 
-% subjectLIST = {'CLASE018','CLASE019','CLASE022','CLASE023','CLASE024',...
-%     'CLASE026','CLASE027','CLASE029','CLASE030','CLASE031','CLASE034','CLASE035'};
+cd('Y:\LossAversion\LH_Data\GC_ConnResults')
+
+subjectLIST = {'CLASE018','CLASE019',...
+    'CLASE022','CLASE023','CLASE024',...
+    'CLASE026','CLASE027','CLASE029','CLASE030','CLASE031','CLASE034','CLASE035'};
 
 for sii = 1:length(subjectLIST)
 
-    BSGC = Bootstrap_GC_TimeResolved(path2sub, subjectLIST{sii}, ...
-        'winLen',250, 'step',25, 'tZero',501, 'baseline',[1 375], ...
-        'order',10, 'nBoot',100, 'contrast',{'CHOICE','OUTCOME'}, ...
-        'epochOpts',{'winSamples',1500});
+    loadName = ['GCC_',subjectLIST{sii},'.mat'];
+
+    load(loadName)
+    % BSGC = Bootstrap_GC_TimeResolved(path2sub, subjectLIST{sii}, ...
+        % 'winLen',250, 'step',25, 'tZero',501, 'baseline',[1 375], ...
+        % 'order',10, 'nBoot',100, 'contrast',{'CHOICE','OUTCOME'}, ...
+        % 'epochOpts',{'winSamples',1500});
 
     Plot_GC_Bootstrap(BSGC, 'view','change');     % change on top, contrast below
 
